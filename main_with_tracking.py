@@ -61,8 +61,9 @@ def handle_done(message):
             f.write(f"[{timestamp}] {user_input}\n")
         bot.reply_to(message, "📝 Записано. Глечик гордий.")
     else:
-        bot.reply_to(message, "Напиши після /done, що ти зробив. Наприклад:
-`/done зробив ранкову рутину`")
+     bot.reply_to(message, """Напиши після /done, що ти зробив. Наприклад:
+/done зробив ранкову рутину""")
+
 
 # Команда /show_today
 @bot.message_handler(commands=['show_today'])
