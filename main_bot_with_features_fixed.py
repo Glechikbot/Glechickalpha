@@ -33,7 +33,6 @@ LOG_FILE = "progress_log.txt"
 # Завантаження life-hacks і tasks
 with open(HACKS_FILE, encoding="utf-8") as f:
     life_hacks = [line.strip() for line in f if line.strip()]
-
 with open(TASKS_FILE, encoding="utf-8") as f:
     tasks = [line.strip() for line in f if line.strip()]
 
@@ -66,7 +65,7 @@ evening_text = """🌙 Вечір настав.
 Напиши, що ти зробив сьогодні через /done:
 """
 
-# Розклад
+# Розклад повідомлень
 messages = {
     "05:00": build_morning_message,
     "10:30": lambda: "🔔 13:30 — точка зупинки.
@@ -78,6 +77,7 @@ messages = {
     "21:00": lambda: evening_text
 }
 
+# Зберігати стани відправлених повідомлень
 sent_flags = set()
 last_day = None
 
@@ -87,18 +87,20 @@ def send_timed_messages():
     time_key = now.strftime("%H:%M")
     today = now.strftime("%Y-%m-%d")
 
+    # Якщо новий день — очищаємо прапорці
     if last_day != today:
         sent_flags.clear()
         last_day = today
         logging.info(f"[{today}] Новий день, очищено sent_flags.")
 
+    # Відправка повідомлення
     if time_key in messages and time_key not in sent_flags:
         text = messages[time_key]()
         bot.send_message(USER_ID, text)
         sent_flags.add(time_key)
         logging.info(f"[{time_key}] Повідомлення надіслано.")
     else:
-        logging.info(f"[{time_key}] Ніяких повідомлень.")
+        logging.info(f"[{time_key}] Ніяких повідомлень або вже надіслано.")
 
 # Обробка команди /done
 @bot.message_handler(commands=['done'])
@@ -120,20 +122,25 @@ def handle_done(message):
             reply += f" 🎉 Вітаю! Ти досяг рівня «{lvl_name}»!"
         bot.reply_to(message, reply)
     else:
-        bot.reply_to(message, "Напиши, що зробив через /done, наприклад:\n/done зробив ранкову рутину")
+        bot.reply_to(message, "Напиши, що зробив через /done, наприклад:
+/done зробив ранкову рутину")
 
 # Обробка команди /show_today
 @bot.message_handler(commands=['show_today'])
 def handle_show_today(message):
     today = datetime.now().strftime("%Y-%m-%d")
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-    today_logs = [ln for ln in lines if ln.startswith(f"[{today}")]
+    logs = []
+    if os.path.exists(LOG_FILE):
+        with open(LOG_FILE, "r", encoding="utf-8") as f:
+            logs = f.readlines()
+    today_logs = [ln for ln in logs if ln.startswith(f"[{today}")]
     if today_logs:
-        bot.reply_to(message, "📘 Твої сьогоднішні записи:\n" + "".join(today_logs))
+        bot.reply_to(message, "📘 Твої сьогоднішні записи:
+" + "".join(today_logs))
     else:
         bot.reply_to(message, "Сьогодні ще нічого не записано.")
 
+# Scheduler and polling
 def run_scheduler():
     while True:
         send_timed_messages()
