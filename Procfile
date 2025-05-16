@@ -1,1 +1,1 @@
-worker: python main_test.py
+web: python main_bot_with_features.py
