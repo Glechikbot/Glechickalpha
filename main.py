@@ -1,44 +1,98 @@
+# main_bot_with_flask_patch.py
+
 import telebot
-import random
+from flask import Flask
+from threading import Thread
 import datetime
+import random
+import time
 
 TOKEN = "7603422398:AAHb3RCngyJEZXpBINoEHSFcgEQIPXh4ULc"
+USER_ID = 493019903
+
 bot = telebot.TeleBot(TOKEN)
 
-tasks = [
-    "Зроби 10 присідань 💪",
-    "Порівняй ціни на товар для продажу 🛒",
-    "Створи пост для інстаграму про продукт 📸",
-    "Зроби 10 віджимань 🏋️",
-    "Обери товар з високим попитом 📦"
-]
+# ========== DUMMY FLASK SERVER ==========
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "I’m alive, baby! 💪"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=10000)
+
+# ========== BOT LOGIC ==========
+
+messages_sent = set()
+points = 0
+level = 0
+
+def get_level(points):
+    if points >= 100:
+        return "Стратег 🌟"
+    elif points >= 50:
+        return "Боєць 💪"
+    elif points >= 20:
+        return "Усвідомлений 🤔"
+    return "Новачок 👶"
 
 lifehacks = [
-    "Замінюй TikTok на стакан води — мозок подякує 🧠",
-    "Запиши план дня ще до першого рілса 📃",
-    "Вимкни сповіщення на годину і стань вільним 🚫📱"
+    "Пий воду щоранку — мозок буде вдячний 💧",
+    "Тримай фокус на одній задачі — багатозадачність це пастка 🎯",
+    "Закрий 3 зайві вкладки. Так, ті що зліва 😉",
+    "Постав таймер на 25 хвилин і просто почни 🕒",
+    "Нема настрою? Поприбирай 5 хвилин — допомагає 🧼"
+]
+
+tasks = [
+    "Зроби 15 присідань",
+    "Вибери товар для перепродажу",
+    "Напиши 1 пост для Instagram",
+    "Порівняй ціни на товар в 3 магазинах",
+    "Зроби 10 віджимань",
+    "Додай 1 нову ідею в блокнот",
+    "Почни новий Reels або сторіс",
+    "Запиши голосову думку щодо нової ніші"
 ]
 
 @bot.message_handler(commands=['start'])
-def start_message(message):
-    bot.send_message(message.chat.id, "Привіт, глечино! Готовий до продуктивного дня? 🌞")
+def start(message):
+    if message.chat.id == USER_ID:
+        bot.send_message(message.chat.id, "Добрий ранок, глечиче! Я вже на зв’язку 🔥")
 
 @bot.message_handler(commands=['done'])
-def done_message(message):
-    with open("progress.txt", "a") as f:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        f.write(f"{timestamp} {message.text}\n")
-    bot.send_message(message.chat.id, "Записано! ✅")
+def mark_done(message):
+    global points
+    if message.chat.id == USER_ID:
+        points += 10
+        lvl = get_level(points)
+        bot.send_message(message.chat.id, f"✅ Зараховано! У тебе вже {points} балів. Рівень: {lvl}")
 
-def send_morning_reminder():
-    bot.send_message(YOUR_493019903, "🚨 Доброго ранку, глечино! Не залипай в телефон, зроби щось із плану!")
+# ========== SCHEDULER ==========
+def scheduler():
+    while True:
+        now = datetime.datetime.now()
+        time_str = now.strftime("%H:%M")
 
-def send_random_task():
-    task = random.choice(tasks)
-    bot.send_message(YOUR_493019903, f"🎯 Завдання: {task}")
+        if now.hour == 9 and time_str not in messages_sent:
+            bot.send_message(USER_ID, "🌞 Добрий ранок! Не залипай, давай фокус 👀")
+            messages_sent.add(time_str)
 
-def send_random_lifehack():
-    hack = random.choice(lifehacks)
-    bot.send_message(YOUR_493019903, f"💡 Лайфхак дня: {hack}")
+        if now.hour == 13 and time_str not in messages_sent:
+            task = random.choice(tasks)
+            bot.send_message(USER_ID, f"🎲 Завдання: {task}")
+            messages_sent.add(time_str)
 
-bot.polling()
+        if now.hour == 16 and time_str not in messages_sent:
+            hack = random.choice(lifehacks)
+            bot.send_message(USER_ID, f"🧠 Лайфхак: {hack}")
+            messages_sent.add(time_str)
+
+        time.sleep(30)
+
+# ========== LAUNCH ==========
+if __name__ == '__main__':
+    Thread(target=run_flask).start()
+    Thread(target=scheduler).start()
+    bot.polling(none_stop=True)
